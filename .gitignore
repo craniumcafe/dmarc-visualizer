@@ -1,3 +1,6 @@
-/files/
-/output_files/
-/elastic_data/
+/elastic_data/*
+!/elastic_data/.gitkeep
+/input_files/*
+!/input_files/.gitkeep
+/output_files/*
+!/output_files/.gitkeep
