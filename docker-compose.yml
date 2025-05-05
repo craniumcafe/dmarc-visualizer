@@ -25,10 +25,6 @@ services:
     restart: on-failure
 
   grafana:
-    build: ./grafana/
+    build: ./grafana
     ports:
       - 3000:3000
-    user: root
-    environment:
-      GF_INSTALL_PLUGINS: grafana-piechart-panel,grafana-worldmap-panel
-      GF_AUTH_ANONYMOUS_ENABLED: 'true'
