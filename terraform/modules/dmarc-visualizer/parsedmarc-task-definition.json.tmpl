@@ -1,0 +1,24 @@
+[
+  {
+    "name": "parsedmarc",
+    "image": "your-parsedmarc-image", // Replace with actual image
+    "essential": true,
+    "environment": [
+      { "name": "AWS_REGION", "value": "${aws_region}" },
+      { "name": "OPENSEARCH_HOST", "value": "${opensearch_endpoint}" },
+      { "name": "S3_BUCKET", "value": "${s3_bucket}" },
+      { "name": "S3_PATH", "value": "${s3_path}" },
+      { "name": "PARSEDMARC_CONFIG", "value": "${parsedmarc_ini_path}" }
+    ],
+    "logConfiguration": {
+      "logDriver": "awslogs",
+      "options": {
+        "awslogs-group": "/ecs/parsedmarc",
+        "awslogs-region": "${aws_region}",
+        "awslogs-stream-prefix": "ecs"
+      }
+    },
+    "memory": 512,
+    "cpu": 256
+  }
+] 

@@ -1,0 +1,2 @@
+# AWS Lambda includes boto3 by default
+# Add any additional dependencies below 

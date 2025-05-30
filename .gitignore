@@ -4,3 +4,13 @@
 !/input_files/.gitkeep
 /output_files/*
 !/output_files/.gitkeep
+
+# Terraform
+.terraform
+.terraform.lock.hcl
+terraform.tfstate
+terraform.tfstate.backup
+terraform.tfvars
+terraform.tfvars.json
+terraform.tfvars.json.backup
+terraform.tfvars.json.backup.backup

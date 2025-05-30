@@ -1,0 +1,15 @@
+[
+    {
+        "name": "grafana",
+        "image": "grafana/grafana:latest",
+        "essential": true,
+        "portMappings": [
+            {
+                "containerPort": 3000,
+                "hostPort": 3000
+            }
+        ],
+        "memory": 512,
+        "cpu": 256
+    }
+]
