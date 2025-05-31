@@ -66,7 +66,7 @@ resource "aws_lambda_function" "dmarc_trigger" {
   filename         = "${path.module}/lambda/dmarc_trigger.zip"
   function_name    = "dmarc-s3-trigger"
   role             = aws_iam_role.lambda_exec.arn
-  handler          = "lambda_function.lambda_handler"
+  handler          = "dmarc_trigger.handler"
   runtime          = "python3.12"
   source_code_hash = filebase64sha256("${path.module}/lambda/dmarc_trigger.zip")
   environment {
@@ -94,4 +94,12 @@ resource "aws_sns_topic_subscription" "lambda_sub" {
   topic_arn = aws_sns_topic.ses_notifications.arn
   protocol  = "lambda"
   endpoint  = aws_lambda_function.dmarc_trigger.arn
+}
+
+resource "aws_lambda_permission" "allow_s3" {
+  statement_id  = "AllowExecutionFromS3"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.dmarc_trigger.arn
+  principal     = "s3.amazonaws.com"
+  source_arn    = data.aws_s3_bucket.dmarc.arn
 }
