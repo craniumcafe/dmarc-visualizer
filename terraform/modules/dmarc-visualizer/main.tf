@@ -347,6 +347,118 @@ resource "local_file" "parsedmarc_entrypoint" {
   filename = "${path.module}/build/parsedmarc-entrypoint.sh"
 }
 
+resource "random_string" "suffix" {
+  length  = 8
+  special = false
+  upper   = false
+  lower   = true
+  numeric = true
+}
+
+resource "aws_cognito_user_pool" "opensearch" {
+  name = "opensearch-user-pool"
+}
+
+resource "aws_cognito_user_pool_client" "opensearch" {
+  name            = "opensearch-user-pool-client"
+  user_pool_id    = aws_cognito_user_pool.opensearch.id
+  generate_secret = false
+}
+
+resource "aws_cognito_user_pool_domain" "opensearch" {
+  domain       = "dmarc-opensearch-${random_string.suffix.result}"
+  user_pool_id = aws_cognito_user_pool.opensearch.id
+}
+
+resource "aws_cognito_identity_pool" "opensearch" {
+  identity_pool_name               = "opensearch-identity-pool"
+  allow_unauthenticated_identities = false
+
+  cognito_identity_providers {
+    client_id     = aws_cognito_user_pool_client.opensearch.id
+    provider_name = aws_cognito_user_pool.opensearch.endpoint
+  }
+}
+
+resource "aws_iam_role" "opensearch_cognito_auth" {
+  name = "opensearch-cognito-auth-role"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          Service = "es.amazonaws.com"
+        }
+        Action = "sts:AssumeRole"
+      },
+      {
+        Effect = "Allow"
+        Principal = {
+          Federated = "cognito-identity.amazonaws.com"
+        }
+        Action = "sts:AssumeRoleWithWebIdentity"
+        Condition = {
+          StringEquals = {
+            "cognito-identity.amazonaws.com:aud" = aws_cognito_identity_pool.opensearch.id
+          },
+          "ForAnyValue:StringLike" = {
+            "cognito-identity.amazonaws.com:amr" = "authenticated"
+          }
+        }
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "opensearch_cognito_auth_policy" {
+  name = "opensearch-cognito-auth-policy"
+  role = aws_iam_role.opensearch_cognito_auth.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = "es:ESHttp*"
+        Resource = "arn:aws:es:${var.aws_region}:${data.aws_caller_identity.current.account_id}:domain/dmarc-domain/*"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "opensearch_cognito_auth_describe_userpool" {
+  name = "opensearch-cognito-auth-describe-userpool"
+  role = aws_iam_role.opensearch_cognito_auth.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "cognito-idp:DescribeUserPool"
+        ]
+        Resource = aws_cognito_user_pool.opensearch.arn
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "opensearch_cognito_auth_describe_identitypool" {
+  name = "opensearch-cognito-auth-describe-identitypool"
+  role = aws_iam_role.opensearch_cognito_auth.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "cognito-identity:DescribeIdentityPool"
+        ]
+        Resource = aws_cognito_identity_pool.opensearch.arn
+      }
+    ]
+  })
+}
 
 output "opensearch_endpoint" {
   value = aws_opensearch_domain.dmarc.endpoint
