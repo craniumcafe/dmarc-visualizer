@@ -97,6 +97,98 @@ resource "aws_iam_role_policy" "ecs_task_policy" {
           "es:ESHttpDelete"
         ]
         Resource = "arn:aws:es:${var.aws_region}:${data.aws_caller_identity.current.account_id}:domain/dmarc-domain/*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "iam:ListRoles",
+          "iam:GetRole"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "ecs:DescribeTasks",
+          "ecs:DescribeClusters",
+          "ecs:ListTasks",
+          "ecs:ListClusters",
+          "ecs:DescribeTaskDefinition",
+          "ec2:DescribeSubnets"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:DescribeLogGroups",
+          "logs:DescribeLogStreams",
+          "logs:GetLogEvents"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "ssm:StartSession",
+          "ssm:SendCommand",
+          "ssm:DescribeSessions",
+          "ssm:GetConnectionStatus",
+          "ssmmessages:CreateControlChannel",
+          "ssmmessages:CreateDataChannel",
+          "ssmmessages:OpenControlChannel",
+          "ssmmessages:OpenDataChannel"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "kms:GenerateDataKey"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect   = "Allow"
+        Action   = "iam:SimulatePrincipalPolicy"
+        Resource = "arn:aws:iam::293627946929:role/ecsTaskRole"
+      },
+      {
+        Effect   = "Allow"
+        Action   = "sts:AssumeRole"
+        Resource = "arn:aws:iam::293627946929:role/ecsTaskRole"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "ecs_task_describe_tasks" {
+  name = "ecs-task-describe-tasks"
+  role = aws_iam_role.ecs_task_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = "ecs:DescribeTasks"
+        Resource = "arn:aws:ecs:us-east-1:293627946929:task/dmarc-cluster/*"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "ecs_task_describe_clusters" {
+  name = "ecs-task-describe-clusters"
+  role = aws_iam_role.ecs_task_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = "ecs:DescribeClusters"
+        Resource = "arn:aws:ecs:us-east-1:293627946929:cluster/dmarc-cluster"
       }
     ]
   })

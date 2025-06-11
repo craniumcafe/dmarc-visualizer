@@ -104,7 +104,7 @@ resource "aws_opensearch_domain" "dmarc" {
   domain_name    = "dmarc-domain"
   engine_version = "OpenSearch_2.11"
   cluster_config {
-    instance_type  = "t3.small.search"
+    instance_type  = "m5.large.search"
     instance_count = 1
   }
   ebs_options {
@@ -152,6 +152,13 @@ resource "aws_opensearch_domain" "dmarc" {
   #   log_type                 = "AUDIT_LOGS"
   #   enabled                  = true
   # }
+
+  cognito_options {
+    enabled          = true
+    identity_pool_id = aws_cognito_identity_pool.opensearch.id
+    role_arn         = aws_iam_role.opensearch_cognito_auth.arn
+    user_pool_id     = aws_cognito_user_pool.opensearch.id
+  }
 }
 
 # Grafana
@@ -171,6 +178,7 @@ resource "aws_ecs_task_definition" "grafana" {
       memory = 512
       cpu    = 256
       environment = [
+        { name = "ECS_CLUSTER", value = aws_ecs_cluster.dmarc.name },
         { name = "GF_AUTH_GOOGLE_CLIENT_ID", value = var.grafana_google_client_id },
         { name = "GF_AUTH_GOOGLE_CLIENT_SECRET", value = var.grafana_google_client_secret },
         { name = "GF_AUTH_GOOGLE_SCOPES", value = "https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email" },
@@ -200,7 +208,7 @@ resource "aws_ecs_service" "grafana" {
   name                   = "grafana"
   cluster                = aws_ecs_cluster.dmarc.id
   task_definition        = aws_ecs_task_definition.grafana.arn
-  desired_count          = 0
+  desired_count          = 1
   launch_type            = "FARGATE"
   enable_execute_command = true
 
@@ -375,8 +383,12 @@ resource "aws_cognito_identity_pool" "opensearch" {
   allow_unauthenticated_identities = false
 
   cognito_identity_providers {
-    client_id     = aws_cognito_user_pool_client.opensearch.id
-    provider_name = aws_cognito_user_pool.opensearch.endpoint
+    client_id     = "44l2tg5khhker4rrsqaphh6tbi"
+    provider_name = "cognito-idp.${var.aws_region}.amazonaws.com/${aws_cognito_user_pool.opensearch.id}"
+  }
+  cognito_identity_providers {
+    client_id     = "3amn4uti98nm2tfj9881mhac8i"
+    provider_name = "cognito-idp.${var.aws_region}.amazonaws.com/${aws_cognito_user_pool.opensearch.id}"
   }
 }
 
@@ -455,6 +467,83 @@ resource "aws_iam_role_policy" "opensearch_cognito_auth_describe_identitypool" {
           "cognito-identity:DescribeIdentityPool"
         ]
         Resource = aws_cognito_identity_pool.opensearch.arn
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "opensearch_cognito_access" {
+  role       = aws_iam_role.opensearch_cognito_auth.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonOpenSearchServiceCognitoAccess"
+}
+
+resource "aws_iam_role" "opensearch_identity_pool_auth" {
+  name = "opensearch-identity-pool-auth-role"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Principal = {
+        Federated = "cognito-identity.amazonaws.com"
+      }
+      Action = "sts:AssumeRoleWithWebIdentity"
+      Condition = {
+        StringEquals = {
+          "cognito-identity.amazonaws.com:aud" = aws_cognito_identity_pool.opensearch.id
+        },
+        "ForAnyValue:StringLike" = {
+          "cognito-identity.amazonaws.com:amr" = "authenticated"
+        }
+      }
+    }]
+  })
+}
+
+resource "aws_iam_role" "opensearch_identity_pool_unauth" {
+  name = "opensearch-identity-pool-unauth-role"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Principal = {
+        Federated = "cognito-identity.amazonaws.com"
+      }
+      Action = "sts:AssumeRoleWithWebIdentity"
+      Condition = {
+        StringEquals = {
+          "cognito-identity.amazonaws.com:aud" = aws_cognito_identity_pool.opensearch.id
+        },
+        "ForAnyValue:StringLike" = {
+          "cognito-identity.amazonaws.com:amr" = "unauthenticated"
+        }
+      }
+    }]
+  })
+}
+
+resource "aws_cognito_identity_pool_roles_attachment" "opensearch" {
+  identity_pool_id = aws_cognito_identity_pool.opensearch.id
+  roles = {
+    authenticated   = aws_iam_role.opensearch_identity_pool_auth.arn
+    unauthenticated = aws_iam_role.opensearch_identity_pool_unauth.arn
+  }
+}
+
+resource "aws_iam_role_policy" "opensearch_identity_pool_auth_policy" {
+  name = "opensearch-identity-pool-auth-policy"
+  role = aws_iam_role.opensearch_identity_pool_auth.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "es:ESHttpGet",
+          "es:ESHttpPost",
+          "es:ESHttpPut",
+          "es:ESHttpDelete"
+        ]
+        Resource = "arn:aws:es:${var.aws_region}:${data.aws_caller_identity.current.account_id}:domain/dmarc-domain/*"
       }
     ]
   })

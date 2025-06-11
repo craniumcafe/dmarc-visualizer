@@ -1,21 +1,20 @@
 FROM grafana/grafana-oss:latest-ubuntu
 
 # Install dashboard and dependencies
-# ARG DMARC_DASHBOARD=https://raw.githubusercontent.com/domainaware/parsedmarc/master/grafana/Grafana-DMARC_Reports.json
-# ADD --chown=grafana:root ${DMARC_DASHBOARD} /var/lib/grafana/dashboards/
+ARG DMARC_DASHBOARD=https://raw.githubusercontent.com/domainaware/parsedmarc/master/grafana/Grafana-DMARC_Reports.json
+ADD --chown=grafana:root ${DMARC_DASHBOARD} /var/lib/grafana/dashboards/
 
 USER root
 
 # Use your patched dashboard
-COPY --chown=grafana:root dashboards/DMARC_Reports.json /var/lib/grafana/dashboards/DMARC_Reports.json
-RUN grafana-cli --pluginsDir "${GF_PATHS_PLUGINS}" plugins install grafana-piechart-panel
-RUN grafana-cli --pluginsDir "${GF_PATHS_PLUGINS}" plugins install grafana-worldmap-panel
+# COPY --chown=grafana:root dashboards/DMARC_Reports.json /var/lib/grafana/dashboards/DMARC_Reports.json
+RUN grafana cli --pluginsDir "${GF_PATHS_PLUGINS}" plugins install grafana-piechart-panel
+RUN grafana cli --pluginsDir "${GF_PATHS_PLUGINS}" plugins install grafana-worldmap-panel
+RUN grafana cli --pluginsDir "${GF_PATHS_PLUGINS}" plugins install grafana-opensearch-datasource
+RUN chown -R grafana:root /var/lib/grafana/plugins
 
 # Copy provisioning files and fix permissions
 COPY --chown=grafana:root provisioning/ /etc/grafana/provisioning/
-COPY --chown=grafana:root provisioning/datasources/datasource.yaml /etc/grafana/provisioning/datasources/datasource.yaml
-COPY --chown=grafana:root start-grafana.sh /start-grafana.sh
-RUN chmod +x /start-grafana.sh
 RUN chmod -R +X /etc/grafana/provisioning
 
 # Install AWS CLI
@@ -48,9 +47,20 @@ RUN pip3 install aws-requests-auth
 # Install aws-es-curl (from GitHub)
 RUN pip3 install awscurl
 
+# Install jq (required for ECS Exec Checker)
+RUN apt-get update && apt-get install -y jq && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Install Amazon ECS Exec Checker
+RUN curl -Ls https://raw.githubusercontent.com/aws-containers/amazon-ecs-exec-checker/main/check-ecs-exec.sh -o /usr/local/bin/check-ecs-exec.sh \
+    && chmod +x /usr/local/bin/check-ecs-exec.sh
+
 USER grafana
 
 # Configure Grafana
 ENV GF_AUTH_ANONYMOUS_ENABLED=false
+ENV GF_AWS_ALLOWED_AUTH_PROVIDERS=default
+ENV GF_LOG_LEVEL=debug
+ENV GF_SECURITY_ADMIN_USER=admin
+ENV GF_SECURITY_ADMIN_PASSWORD=B1k3.kevlab
 
-ENTRYPOINT ["/start-grafana.sh"]
+CMD ["grafana", "server"]
