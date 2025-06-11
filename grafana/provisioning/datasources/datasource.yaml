@@ -2,6 +2,7 @@ apiVersion: 1
 
 datasources:
   - name: dmarc-ag
+    uid: dmarc-ag
     type: grafana-opensearch-datasource
     access: server
     url: https://search-dmarc-domain-qlmy6lk2nnxuip4tb3q6m2wuka.us-east-1.es.amazonaws.com

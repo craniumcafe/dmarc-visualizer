@@ -1,13 +1,12 @@
 FROM grafana/grafana-oss:latest-ubuntu
 
 # Install dashboard and dependencies
-ARG DMARC_DASHBOARD=https://raw.githubusercontent.com/domainaware/parsedmarc/master/grafana/Grafana-DMARC_Reports.json
-ADD --chown=grafana:root ${DMARC_DASHBOARD} /var/lib/grafana/dashboards/
 
 USER root
 
 # Use your patched dashboard
-# COPY --chown=grafana:root dashboards/DMARC_Reports.json /var/lib/grafana/dashboards/DMARC_Reports.json
+COPY --chown=grafana:root dashboards/DMARC_Reports-1749660606764.json /var/lib/grafana/dashboards/DMARC_Reports-1749660606764.json
+
 RUN grafana cli --pluginsDir "${GF_PATHS_PLUGINS}" plugins install grafana-piechart-panel
 RUN grafana cli --pluginsDir "${GF_PATHS_PLUGINS}" plugins install grafana-worldmap-panel
 RUN grafana cli --pluginsDir "${GF_PATHS_PLUGINS}" plugins install grafana-opensearch-datasource
