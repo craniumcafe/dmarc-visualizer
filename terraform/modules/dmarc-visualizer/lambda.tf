@@ -42,7 +42,10 @@ resource "aws_iam_policy" "lambda_policy" {
         Action = [
           "iam:PassRole"
         ],
-        Resource = aws_iam_role.ecs_task_execution_role.arn
+        Resource = [
+          aws_iam_role.ecs_task_role.arn,
+          aws_iam_role.ecs_task_execution_role.arn
+        ]
       },
       {
         Effect = "Allow",
@@ -66,7 +69,7 @@ resource "aws_lambda_function" "dmarc_trigger" {
   filename         = "${path.module}/lambda/dmarc_trigger.zip"
   function_name    = "dmarc-s3-trigger"
   role             = aws_iam_role.lambda_exec.arn
-  handler          = "dmarc_trigger.handler"
+  handler          = "dmarc_trigger.lambda_handler"
   runtime          = "python3.12"
   source_code_hash = filebase64sha256("${path.module}/lambda/dmarc_trigger.zip")
   environment {
@@ -77,9 +80,10 @@ resource "aws_lambda_function" "dmarc_trigger" {
       TASK_DEF_ARN    = aws_ecs_task_definition.parsedmarc.arn
       SUBNETS         = join(",", [aws_subnet.dmarc.id])
       SECURITY_GROUPS = join(",", [aws_security_group.dmarc.id])
-      TASK_ROLE_ARN   = aws_iam_role.ecs_task_execution_role.arn
+      TASK_ROLE_ARN   = aws_iam_role.ecs_task_role.arn
     }
   }
+  timeout = 600 # 10 minutes
 }
 
 resource "aws_lambda_permission" "allow_sns" {

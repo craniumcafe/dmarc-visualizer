@@ -5,7 +5,7 @@ cat > /parsedmarc.ini <<EOF
 [general]
 save_aggregate = True
 save_forensic = True
-debug = True
+debug = False
 log_file = /tmp/parsedmarc.log
 strip_attachment_payloads = True
 n_procs = 2
