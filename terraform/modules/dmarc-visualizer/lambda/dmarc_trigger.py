@@ -13,7 +13,6 @@ def lambda_handler(event, context):
     task_def_arn = os.environ['TASK_DEF_ARN']
     subnets = os.environ['SUBNETS'].split(',')
     security_groups = os.environ['SECURITY_GROUPS'].split(',')
-    task_role_arn = os.environ['TASK_ROLE_ARN']
 
     # List all files in the S3 prefix
     paginator = s3.get_paginator('list_objects_v2')
@@ -28,33 +27,23 @@ def lambda_handler(event, context):
 
     print(f'Found {len(files)} files to process.')
 
-    for file_key in files:
-        response = ecs.run_task(
-            cluster=cluster_arn,
-            taskDefinition=task_def_arn,
-            launchType='FARGATE',
-            count=1,
-            platformVersion='LATEST',
-            networkConfiguration={
-                'awsvpcConfiguration': {
-                    'subnets': subnets,
-                    'securityGroups': security_groups,
-                    'assignPublicIp': 'ENABLED'
-                }
-            },
-            overrides={
-                'containerOverrides': [
-                    {
-                        'name': 'parsedmarc',
-                        'environment': [
-                            {'name': 'S3_PROCESS_FILE', 'value': file_key}
-                        ]
-                    }
-                ]
+    # Start a single ECS Fargate task (no overrides)
+    response = ecs.run_task(
+        cluster=cluster_arn,
+        taskDefinition=task_def_arn,
+        launchType='FARGATE',
+        count=1,
+        platformVersion='LATEST',
+        networkConfiguration={
+            'awsvpcConfiguration': {
+                'subnets': subnets,
+                'securityGroups': security_groups,
+                'assignPublicIp': 'ENABLED'
             }
-        )
-        task_arn = response['tasks'][0]['taskArn']
-        print(f'Started ECS task: {task_arn}')
+        }
+    )
+    task_arn = response['tasks'][0]['taskArn']
+    print(f'Started ECS task: {task_arn}')
 
     # Wait for ECS task to complete
     waiter = ecs.get_waiter('tasks_stopped')
