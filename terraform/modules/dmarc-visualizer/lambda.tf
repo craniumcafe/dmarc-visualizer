@@ -33,7 +33,7 @@ resource "aws_iam_policy" "lambda_policy" {
         Effect = "Allow",
         Action = [
           "ecs:RunTask",
-          "ecs:DescribeTasks"
+          "ecs:Describe*"
         ],
         Resource = "*"
       },
@@ -55,6 +55,20 @@ resource "aws_iam_policy" "lambda_policy" {
           "logs:PutLogEvents"
         ],
         Resource = "arn:aws:logs:*:*:*"
+      },
+      {
+        Effect = "Allow",
+        Action = [
+          "ecs:UpdateService"
+        ],
+        Resource = "arn:aws:ecs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:service/${aws_ecs_cluster.dmarc.name}/parsedmarc"
+      },
+      {
+        Effect = "Allow",
+        Action = [
+          "es:ESHttp*"
+        ],
+        Resource = "arn:aws:es:${var.aws_region}:${data.aws_caller_identity.current.account_id}:domain/${aws_opensearch_domain.dmarc.domain_name}/*"
       }
     ]
   })
@@ -74,16 +88,19 @@ resource "aws_lambda_function" "dmarc_trigger" {
   source_code_hash = filebase64sha256("${path.module}/lambda/dmarc_trigger.zip")
   environment {
     variables = {
-      BUCKET_NAME     = var.bucket_name
-      S3_PATH         = local.s3_path
-      CLUSTER_ARN     = aws_ecs_cluster.dmarc.arn
-      TASK_DEF_ARN    = aws_ecs_task_definition.parsedmarc.arn
-      SUBNETS         = join(",", [aws_subnet.dmarc.id])
-      SECURITY_GROUPS = join(",", [aws_security_group.dmarc.id])
-      TASK_ROLE_ARN   = aws_iam_role.ecs_task_role.arn
+      BUCKET_NAME      = var.bucket_name
+      S3_PATH          = local.s3_path
+      CLUSTER_ARN      = aws_ecs_cluster.dmarc.arn
+      TASK_DEF_ARN     = aws_ecs_task_definition.parsedmarc.arn
+      SUBNETS          = join(",", [aws_subnet.dmarc.id])
+      SECURITY_GROUPS  = join(",", [aws_security_group.dmarc.id])
+      TASK_ROLE_ARN    = aws_iam_role.ecs_task_role.arn
+      OPENSEARCH_HOST  = aws_opensearch_domain.dmarc.endpoint
+      OPENSEARCH_INDEX = "dmarc_aggregate-*"
+      OPENSEARCH_PORT  = 443
     }
   }
-  timeout = 600 # 10 minutes
+  timeout = 900 # 15 minutes
 }
 
 resource "aws_lambda_permission" "allow_sns" {

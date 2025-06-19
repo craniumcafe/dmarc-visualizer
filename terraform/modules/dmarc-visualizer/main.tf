@@ -234,6 +234,7 @@ resource "aws_ecs_task_definition" "parsedmarc" {
   container_definitions = templatefile("${path.module}/parsedmarc-task-definition.json.tmpl", {
     image               = docker_image.parsedmarc.name
     opensearch_endpoint = aws_opensearch_domain.dmarc.endpoint
+    opensearch_index    = "dmarc-reports"
     s3_bucket           = var.bucket_name
     aws_region          = var.aws_region
     s3_path             = local.s3_path
