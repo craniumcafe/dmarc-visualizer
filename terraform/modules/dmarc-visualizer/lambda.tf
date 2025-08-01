@@ -33,7 +33,9 @@ resource "aws_iam_policy" "lambda_policy" {
         Effect = "Allow",
         Action = [
           "ecs:RunTask",
-          "ecs:Describe*"
+          "ecs:Describe*",
+          "ecs:List*",
+          "ecs:UpdateService"
         ],
         Resource = "*"
       },
