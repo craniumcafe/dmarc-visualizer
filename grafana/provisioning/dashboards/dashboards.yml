@@ -1,6 +1,15 @@
-- name: 'default'
-  org_id: 1
-  path: ''
-  type: 'file'
-  options:
-    folder: '/var/lib/grafana/dashboards'
+apiVersion: 1
+providers:
+  - name: 'default'
+    orgId: 1
+    folder: 'DMARC Dashboards'               # ← Appears in Grafana UI
+    type: file
+    disableDeletion: false
+    allowUiUpdates: false
+    options:
+      path: /var/lib/grafana/dashboards      # ← Folder with your .json dashboards
+      inputs:
+        - name: datasourceag
+          type: datasource
+          pluginId: grafana-opensearch-datasource
+          uid: dmarc-ag                      # ← Must match your datasource.yaml

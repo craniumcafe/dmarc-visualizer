@@ -1,0 +1,46 @@
+[
+  {
+    "name": "aws-es-proxy",
+    "image": "abutaha/aws-es-proxy:latest",
+    "essential": true,
+    "portMappings": [
+      { "containerPort": 9200, "hostPort": 9200 }
+    ],
+    "environment": [
+      { "name": "AWS_REGION", "value": "${aws_region}" },
+      { "name": "ES_ENDPOINT", "value": "https://${opensearch_endpoint}" }
+    ],
+    "command": [
+      "-endpoint", "https://${opensearch_endpoint}",
+      "-listen", ":9200"
+    ],
+    "logConfiguration": {
+      "logDriver": "awslogs",
+      "options": {
+        "awslogs-group": "/ecs/parsedmarc",
+        "awslogs-region": "${aws_region}",
+        "awslogs-stream-prefix": "ecs"
+      }
+    }
+  },
+  {
+    "name": "parsedmarc",
+    "image": "${image}",
+    "essential": false,
+    "environment": [
+      { "name": "AWS_REGION", "value": "${aws_region}" },
+      { "name": "OPENSEARCH_HOST", "value": "http://localhost:9200" },
+      { "name": "OPENSEARCH_INDEX", "value": "${opensearch_index}" },
+      { "name": "S3_BUCKET", "value": "${s3_bucket}" },
+      { "name": "S3_PATH", "value": "${s3_path}" }
+    ],
+    "logConfiguration": {
+      "logDriver": "awslogs",
+      "options": {
+        "awslogs-group": "/ecs/parsedmarc",
+        "awslogs-region": "${aws_region}",
+        "awslogs-stream-prefix": "ecs"
+      }
+    }
+  }
+] 
